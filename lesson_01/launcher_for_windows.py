@@ -1,6 +1,7 @@
 """Лаунчер"""
 
 import subprocess
+from time import sleep
 
 PROCESS = []
 
@@ -13,6 +14,7 @@ while True:
     elif ACTION == 's':
         PROCESS.append(subprocess.Popen('python server.py',
                                         creationflags=subprocess.CREATE_NEW_CONSOLE))
+        sleep(1.4)
         for i in range(1):
             PROCESS.append(subprocess.Popen('python client.py -a 127.0.0.1 -n "Олег"',
                                             creationflags=subprocess.CREATE_NEW_CONSOLE))

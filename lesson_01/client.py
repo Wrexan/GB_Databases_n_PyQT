@@ -1,10 +1,7 @@
 """
-1. На клиентской стороне реализовать прием и отправку сообщений с помощью потоков в P2P-формате
-(обмен сообщениями между двумя пользователями).
-Итогом выполнения домашних заданий первой части продвинутого курса Python стал консольный мессенджер.
-
-Усовершенствуем его во второй части: реализуем взаимосвязь мессенджера с базами данных
-и создадим для него графический пользовательский интерфейс.
+4. В следующем уроке мы будем изучать дескрипторы и метаклассы. Но вы уже сейчас можете
+перевести часть кода из функционального стиля в объектно-ориентированный. Создайте
+классы «Клиент» и «Сервер», а используемые функции превратите в методы классов
 """
 # CLIENT
 import json
@@ -12,7 +9,7 @@ import sys
 import threading
 from time import time, sleep, strftime, localtime
 from socket import socket, AF_INET, SOCK_STREAM
-from common.globals import ACTION, SENDER, DESTINATION, PRESENCE, RESPONSE, ERROR, EXIT, ONLINE,\
+from common.globals import ACTION, SENDER, DESTINATION, PRESENCE, RESPONSE, ERROR, EXIT, ONLINE, \
     TIME, USER, ACCOUNT_NAME, DEF_PORT, DEF_IP, MESSAGE, MESSAGE_TEXT
 from common.utils import send_message, get_message, handle_parameters
 from common.errors import ReqFieldMissingError, ServerError
@@ -23,126 +20,134 @@ from log.decorator import log
 LOGGER = logging.getLogger('client')
 
 
-@log
-def message_from_server(sock, acc_name):
-    while True:
-        try:
-            msg = get_message(sock)
-            if not msg:
-                sys.exit(0)
-            if ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
-            SENDER in msg and MESSAGE_TEXT in msg:
-                if DESTINATION in msg and msg[DESTINATION] == acc_name:
-                    print(f'ЛИЧНО [{msg[SENDER]}]: {msg[MESSAGE_TEXT]}')
+class ClientReader(threading.Thread):
+    def __init__(self, acc_name, sock):
+        self.acc_name = acc_name
+        self.sock = sock
+        super().__init__()
+
+    def run(self):
+        while True:
+            try:
+                msg = get_message(self.sock)
+                if not msg:
+                    sys.exit(0)
+                if ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
+                        SENDER in msg and MESSAGE_TEXT in msg:
+                    if DESTINATION in msg and msg[DESTINATION] == self.acc_name:
+                        print(f'ЛИЧНО [{msg[SENDER]}]: {msg[MESSAGE_TEXT]}')
+                    else:
+                        print(f'[{msg[SENDER]}]: {msg[MESSAGE_TEXT]}')
+                    LOGGER.debug(f'Получено сообщение от пользователя {msg[SENDER]}: {msg[MESSAGE_TEXT]}')
                 else:
-                    print(f'[{msg[SENDER]}]: {msg[MESSAGE_TEXT]}')
-                LOGGER.debug(f'Получено сообщение от пользователя {msg[SENDER]}: {msg[MESSAGE_TEXT]}')
+                    LOGGER.error(f'Получено некорректное сообщение с сервера: {msg}')
+            except Exception as err:
+                LOGGER.error(f'Не удалось декодировать полученное сообщение: {msg} : {err}')
+                break
+            except (OSError, ConnectionError, ConnectionAbortedError,
+                    ConnectionResetError, json.JSONDecodeError) as err:
+                LOGGER.error(f'Потеряно соединение с сервером: {err}')
+                break
+
+
+class ClientSender(threading.Thread):
+    def __init__(self, acc_name, sock):
+        self.acc_name = acc_name
+        self.sock = sock
+        super().__init__()
+
+    @log
+    def run(self):
+        self.print_help()
+        while True:
+            msg = input(f'<: ')
+            command = msg[0:2]
+
+            if command in ['/q', '/й']:
+                send_message(self.sock, self.create_service_message(self.acc_name, EXIT))
+                print('Завершение работы')
+                LOGGER.info('Завершение работы по команде пользователя.')
+                sleep(1)
+                sys.exit(0)
+
+            elif command in ['/h', '/?']:
+                self.print_help()
+
+            elif command in ['! ']:
+                _name_len = msg[2:].find(' ')
+                if _name_len > 0:
+                    dest_name = msg[2:2 + _name_len]
+                    self.create_message(self.sock, self.acc_name, dest_name, msg[3 + _name_len:])
+                else:
+                    print('Для отправки личного сообщения введите "! <имя> <сообщение>"')
+
+            elif command in ['/!']:
+                send_message(self.sock, self.create_service_message(self.acc_name, ONLINE))
             else:
-                LOGGER.error(f'Получено некорректное сообщение с сервера: {msg}')
+                self.create_message(self.sock, self.acc_name, '', msg)
+
+    @log
+    def create_message(self, sock, acc_name, dest_name, msg):
+        message_dict = {
+            ACTION: MESSAGE,
+            TIME: time(),
+            SENDER: acc_name,
+            DESTINATION: dest_name,
+            MESSAGE_TEXT: msg
+        }
+        try:
+            send_message(sock, message_dict)
+            LOGGER.debug(f'Отправлено сообщение для пользователя {dest_name}')
         except Exception as err:
-            LOGGER.error(f'Не удалось декодировать полученное сообщение: {msg} : {err}')
-            break
-        except (OSError, ConnectionError, ConnectionAbortedError,
-                ConnectionResetError, json.JSONDecodeError) as err:
             LOGGER.error(f'Потеряно соединение с сервером: {err}')
-            break
+            sys.exit(1)
 
-
-@log
-def create_message(sock, acc_name, dest_name, msg):
-    message_dict = {
-        ACTION: MESSAGE,
-        TIME: time(),
-        SENDER: acc_name,
-        DESTINATION: dest_name,
-        MESSAGE_TEXT: msg
-    }
-    try:
-        send_message(sock, message_dict)
-        LOGGER.debug(f'Отправлено сообщение для пользователя {dest_name}')
-    except Exception as err:
-        LOGGER.error(f'Потеряно соединение с сервером: {err}')
-        sys.exit(1)
-
-
-@log
-def create_service_message(acc_name, mgs_type):
-    if mgs_type == PRESENCE:
-        LOGGER.debug(f'Сформировано {PRESENCE} сообщение для пользователя {acc_name}')
-        return {
-            ACTION: PRESENCE,
-            TIME: time(),
-            USER: {
+    @log
+    def create_service_message(self, acc_name, mgs_type):
+        if mgs_type == PRESENCE:
+            LOGGER.debug(f'Сформировано {PRESENCE} сообщение для пользователя {acc_name}')
+            return {
+                ACTION: PRESENCE,
+                TIME: time(),
+                USER: {
+                    ACCOUNT_NAME: acc_name
+                }
+            }
+        if mgs_type == ONLINE:
+            LOGGER.debug(f'Сформировано {ONLINE} сообщение для сервера')
+            return {
+                ACTION: ONLINE,
+                TIME: time(),
+                USER: {
+                    ACCOUNT_NAME: acc_name
+                }
+            }
+        if mgs_type == EXIT:
+            return {
+                ACTION: EXIT,
+                TIME: time(),
                 ACCOUNT_NAME: acc_name
             }
-        }
-    if mgs_type == ONLINE:
-        LOGGER.debug(f'Сформировано {ONLINE} сообщение для сервера')
-        return {
-            ACTION: ONLINE,
-            TIME: time(),
-            USER: {
-                ACCOUNT_NAME: acc_name
-            }
-        }
-    if mgs_type == EXIT:
-        return {
-            ACTION: EXIT,
-            TIME: time(),
-            ACCOUNT_NAME: acc_name
-        }
 
+    @log
+    def handle_answer(self, msg):
+        if RESPONSE in msg:
+            if msg[RESPONSE] == 200:
+                return True
+            elif msg[RESPONSE] == 400:
+                LOGGER.error(f'Ошибка соединения: {msg}')
+                print(msg[ERROR])
+                return False
+        LOGGER.error(f'Получен неправильный ответ сервера(отсутствует RESPONSE): {msg}')
+        raise ValueError
 
-@log
-def handle_answer(msg):
-    if RESPONSE in msg:
-        if msg[RESPONSE] == 200:
-            return '200 : OK'
-        elif msg[RESPONSE] == 400:
-            LOGGER.error(f'Ошибка соединения: {msg}')
-            raise Exception
-    LOGGER.error(f'Получен неправильный ответ сервера(отсутствует RESPONSE): {msg}')
-    raise ValueError
-
-
-def print_help():
-    print('Поддерживаемые команды:')
-    print('<сообщение> - отправить сообщение всем')
-    print('! <имя> <сообщение> - отправить личное сообщение')
-    print('/! - запросить список собеседников')
-    print('/h или /? - вывести подсказки по командам')
-    print('/q или /й - выход из программы')
-
-
-@log
-def UI(sock, acc_name):
-    print_help()
-    while True:
-        msg = input(f'<: ')
-        command = msg[0:2]
-
-        if command in ['/q', '/й']:
-            send_message(sock, create_service_message(acc_name, EXIT))
-            print('Завершение работы')
-            LOGGER.info('Завершение работы по команде пользователя.')
-            sleep(1)
-            sys.exit(0)
-
-        elif command in ['/h', '/?']:
-            print_help()
-
-        elif command in ['! ']:
-            _name_len = msg[2:].find(' ')
-            if _name_len > 0:
-                dest_name = msg[2:2+_name_len]
-                create_message(sock, acc_name, dest_name, msg[3+_name_len:])
-            else:
-                print('Для отправки личного сообщения введите "! <имя> <сообщение>"')
-
-        elif command in ['/!']:
-            send_message(sock, create_service_message(acc_name, ONLINE))
-        else:
-            create_message(sock, acc_name, '', msg)
+    def print_help(self):
+        print('Поддерживаемые команды:')
+        print('<сообщение> - отправить сообщение всем')
+        print('! <имя> <сообщение> - отправить личное сообщение')
+        print('/! - запросить список собеседников')
+        print('/h или /? - вывести подсказки по командам')
+        print('/q или /й - выход из программы')
 
 
 def main():
@@ -150,26 +155,29 @@ def main():
     try:
         serv_ip, serv_port, acc_name = handle_parameters(ip=DEF_IP, port=DEF_PORT)
         print('*' * 100 + '\n Клиент системы обмена сообщениями. ВЕРСИЯ 015 БУ. ГОСТ 189-27-1956.\n' + '*' * 100)
-        if not acc_name:
-            acc_name = input('Представьтесь: ')
-        print(f' Приветствуем, {acc_name}.\n'
-              f' Напоминаем, что вы несете полную ответственность за свои слова в соответствии с законодательнвом.\n'
-              f' Приятного общения.\n' + '*' * 100)
-        LOGGER.info(f'Клиент запущен. Использую SERVER IP:{serv_ip} PORT:{serv_port} NAME:{acc_name}')
 
         try:
-            my_sock = socket(AF_INET, SOCK_STREAM)
-            for _ in range(5):
+            for knock in range(5):
                 try:
+                    my_sock = socket(AF_INET, SOCK_STREAM)
+                    if not acc_name:
+                        acc_name = input('Представьтесь: ')
                     LOGGER.debug(f'[{acc_name}]: Попытка соедиения...')
                     my_sock.connect((serv_ip, serv_port))
                     LOGGER.debug(f'Отправляю сообщение о присутствии...')
-                    send_message(my_sock, create_service_message(acc_name, PRESENCE))
+                    client_sender = ClientSender(acc_name, my_sock)
+                    send_message(my_sock, client_sender.create_service_message(acc_name, PRESENCE))
                     LOGGER.debug(f'Жду ответа от сервера...')
-                    answer = handle_answer(get_message(my_sock))
-                    LOGGER.info(f'Соединение установлено')
+                    answer = client_sender.handle_answer(get_message(my_sock))
                     LOGGER.debug(f'Получен ответ сервера: {answer}')
-                    break
+                    if answer:
+                        break
+                    else:
+                        acc_name = ''
+                        my_sock.close()
+                    if knock == 5:
+                        print('К сожалению подключиться не удалось. Попробуйте позже.')
+                        sys.exit(0)
                 except (ConnectionRefusedError, ConnectionError):
                     LOGGER.debug(f'Сервер не отвечает {serv_ip}:{serv_port}')
         except (ConnectionRefusedError, ConnectionError):
@@ -185,13 +193,17 @@ def main():
             LOGGER.error(f'В ответе сервера отсутствует необходимое поле {missing_error.missing_field}')
             sys.exit(1)
         else:
+            print(f' Приветствуем, {acc_name}.\n'
+                  f' Напоминаем, что вы несете полную ответственность за свои слова в соответствии с законодательнвом.\n'
+                  f' Приятного общения.\n' + '*' * 100)
+            LOGGER.info(f'Клиент запущен. Использую SERVER IP:{serv_ip} PORT:{serv_port} NAME:{acc_name}')
             print(f'Соединение установлено')
-            thread_receiver = threading.Thread(target=message_from_server, args=(my_sock, acc_name))
+            thread_receiver = ClientReader(acc_name, my_sock)
             thread_receiver.daemon = True
             thread_receiver.start()
             LOGGER.debug('Запущен процесс получатель')
 
-            thread_sender_ui = threading.Thread(target=UI, args=(my_sock, acc_name))
+            thread_sender_ui = ClientSender(acc_name, my_sock)
             thread_sender_ui.daemon = True
             thread_sender_ui.start()
             LOGGER.debug('Запущен процесс интерфейс и отправщик')
