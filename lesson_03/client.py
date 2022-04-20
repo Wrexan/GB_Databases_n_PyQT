@@ -61,6 +61,7 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
             try:
                 msg = get_message(self.sock)
                 if not msg:
+                    LOGGER.error(f'Потеряно соединение с сервером.')
                     sys.exit(0)
                 if ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
                         SENDER in msg and MESSAGE_TEXT in msg:

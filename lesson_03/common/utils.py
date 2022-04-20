@@ -61,7 +61,6 @@ def is_ip_bad(ip: str):
 
 @log
 def is_port_bad(port):
-    print(not 1024 < port < 65535)
     if isinstance(port, int):
         return not 1024 < port < 65535
     if isinstance(port, str):
