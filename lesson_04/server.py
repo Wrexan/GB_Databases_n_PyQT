@@ -282,6 +282,7 @@ def print_help():
     print('   u, users - отправить сообщение всем')
     print('   a, active - отправить личное сообщение')
     print('   l, loghist - запросить список собеседников')
+    print('   s, stat - запросить статистику сообщений собеседников')
     print('   ? или help - вывести подсказки по командам')
     print('   q или quit - выход из программы')
 
@@ -297,14 +298,19 @@ def main():
         command = input('=>')
         if command.lower() in ['u', 'users']:
             for user in sorted(database.get_all_users_list()):
-                print(f'Пользователь {user[0]}, последний вход: {user[1]}')
+                print(f'Пользователь [{user[0]}], последний вход: {user[1]}')
         elif command.lower() in ['a', 'active']:
             for user in sorted(database.get_active_users_list()):
-                print(f'Пользователь {user[0]} [{user[1]}:{user[2]}] вошел: {user[3]}')
+                print(f'Пользователь [{user[0]}] [{user[1]}:{user[2]}] вошел: {user[3]}')
         elif command.lower() in ['l', 'loghist']:
             name = input('Введите имя конкретного пользователя или нажмите Enter: ')
             for user in sorted(database.get_login_history(name)):
-                print(f'Пользователь {user[0]}, последний вход: {user[3]} с [{user[1]}:{user[2]}]')
+                print(f'Пользователь [{user[0]}], последний вход: {user[3]} с [{user[1]}:{user[2]}]')
+        elif command.lower() in ['s', 'stat']:
+            name = input('Введите имя конкретного пользователя или нажмите Enter: ')
+            for data in sorted(database.get_user_stat(name)):
+                print(f'Пользователь [{data[0]}], последний вход: {data[1]} '
+                      f'сообщений отправлено: {data[2]} получено: {data[3]}]')
         elif command.lower() in ['?', 'help']:
             print_help()
         elif command.lower() in ['q', 'quit']:

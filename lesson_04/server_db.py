@@ -96,6 +96,9 @@ class ServerDB:
             user = self.AllUsers(user_name)
             self.session.add(user)
             self.session.commit()
+            new_user_stat = self.UsersStats(user.id, 0, 0)
+            self.session.add(new_user_stat)
+
         new_active_user = self.ActiveUsers(user.id, ip, port, datetime.now())
         self.session.add(new_active_user)
         user_history = self.LoginHistory(user.id, ip, port, datetime.now())

@@ -55,7 +55,7 @@ class ClientVerifier(type):
 
 
 class ClientReader(threading.Thread, metaclass=ClientVerifier):
-    def __init__(self, acc_name, sock, database):
+    def __init__(self, acc_name, database, sock):
         self.acc_name = acc_name
         self.sock = sock
         self.database = database
@@ -83,7 +83,7 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
                         LOGGER.debug(f'Соединение с сервером разорвано.')
                         # sys.exit(0)
                     elif ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
-                            SENDER in msg and MESSAGE_TEXT in msg:
+                            SENDER in msg and SENDER != self.acc_name and MESSAGE_TEXT in msg:
                         with database_lock:
                             try:
                                 self.database.add_message(msg[SENDER],
@@ -101,7 +101,7 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
 
 
 class ClientSender(threading.Thread, metaclass=ClientVerifier):
-    def __init__(self, acc_name, sock, database):
+    def __init__(self, acc_name, database, sock):
         self.acc_name = acc_name
         self.sock = sock
         self.database = database
@@ -130,9 +130,15 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                         if dest_name:
                             LOGGER.debug(f'Отправляю команду "{ADD_CONTACT} {dest_name}"')
                             if self.create_service_message(self.acc_name, ADD_CONTACT, dest_name):
-                                print(f'Контакт "{dest_name}" добавлен')
+                                with database_lock:
+                                    try:
+                                        self.database.add_contact(dest_name)
+                                    except Exception as err:
+                                        LOGGER.error(f'Контакт "{dest_name}" добавить не удалось: {err}')
+                                    else:
+                                        print(f'Контакт "{dest_name}" добавлен')
                             else:
-                                print(f'Контакт "{dest_name}" добавить не удалось')
+                                LOGGER.error(f'Контакт "{dest_name}" добавить не удалось, ошибка сервера')
                         else:
                             print('Для добавления пользователя введите "/+ <имя>"')
 
@@ -142,21 +148,65 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                         if dest_name:
                             LOGGER.debug(f'Отправляю команду "{DEL_CONTACT} {dest_name}"')
                             if self.create_service_message(self.acc_name, DEL_CONTACT, dest_name):
-                                print(f'Контакт "{dest_name}" удален')
+                                with database_lock:
+                                    try:
+                                        self.database.del_contact(dest_name)
+                                    except Exception as err:
+                                        LOGGER.error(f'Контакт "{dest_name}" удалить не удалось: {err}')
+                                    else:
+                                        print(f'Контакт "{dest_name}" удален')
                             else:
-                                print(f'Контакт "{dest_name}" удалить не удалось')
+                                print(f'Контакт "{dest_name}" удалить не удалось, ошибка сервера')
                         else:
                             print('Для добавления пользователя введите "/- <имя>"')
 
+                    # Запрашиваем список пользователей
+                    elif msg[1] in ('a', 'all'):
+                        # contact_list = self.create_service_message(self.acc_name, USER_LIST)
+                        with database_lock:
+                            try:
+                                user_list = self.database.get_users()
+                            except Exception as err:
+                                LOGGER.error(f'Список пользователей загрузить не удалось: {err}')
+                            else:
+                                print(f'Все пользователи: {user_list}')
+
                     # Запрашиваем список контактов
-                    elif msg[1] in ('c', 'с'):
-                        contact_list = self.create_service_message(self.acc_name, GET_CONTACTS)
-                        print(f'Ваш список контактов: {contact_list}')
+                    elif msg[1] in ('c', 'cont'):
+                        # contact_list = self.create_service_message(self.acc_name, GET_CONTACTS)
+                        with database_lock:
+                            try:
+                                contact_list = self.database.get_contacts()
+                            except Exception as err:
+                                LOGGER.error(f'Контакты загрузить не удалось: {err}')
+                            else:
+                                print(f'Ваш список контактов: {contact_list}')
+
+                    # Запрашиваем список сообщений
+                    elif msg[1] in ('m', 'msg'):
+                        # contact_list = self.create_service_message(self.acc_name, USER_LIST)
+                        name = input('Введите "от <имя>" или "к <имя>" пользователя или нажмите Enter: ')
+                        with database_lock:
+                            name_from, name_to = None, None
+                            if name:
+                                if name[0] == 'о':
+                                    name_from = name[2:].strip()
+                                elif name[0] == 'к':
+                                    name_to = name[1:].strip()
+                                    print(f'{name_from=} {name_to=}')
+                                try:
+                                    user_list = self.database.get_messages(from_name=name_from, to_name=name_to)
+                                except Exception as err:
+                                    LOGGER.error(f'Список пользователей загрузить не удалось: {err}')
+                                else:
+                                    print(f'Все сообщения: {user_list}')
+                            else:
+                                print(f'Все сообщения: {user_list}')
 
                     # Запрашиваем список онлайн пользователей
                     elif msg[1] == '!':
                         contact_list = self.create_service_message(self.acc_name, ONLINE)
-                        print(f'Ваш список контактов: {contact_list}')
+                        print(f'Пользователи онлайн: {contact_list}')
 
                     # Запрашиваем помощь
                     elif msg[1] in ('h', '?'):
@@ -179,13 +229,12 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
         if len(msg) < cmd_len + 1:
             return None
         name_len = msg[cmd_len:].lstrip().find(' ') if get_text else len(msg[cmd_len:].strip())
-        print(f'{name_len=}')
         if name_len <= 0:
             return None
-        print(f'name={msg[cmd_len + 1:cmd_len + 1 + name_len]=}')
-        print(f'text={msg[cmd_len + 1 + name_len:]=}')
+        # print(f'name={msg[cmd_len + 1:cmd_len + 1 + name_len]=}')
+        # print(f'text={msg[cmd_len + 1 + name_len:]=}')
         if get_text:
-            return msg[cmd_len + 1:cmd_len + 1 + name_len], msg[cmd_len + 1 + name_len:]
+            return msg[cmd_len + 1:cmd_len + 1 + name_len], msg[cmd_len + 2 + name_len:]
         return msg[cmd_len + 1:cmd_len + 1 + name_len]
 
     @log
@@ -214,7 +263,7 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                     LOGGER.error('Не удалось передать сообщение. Таймаут соединения')
 
     # @log
-    def create_service_message(self, acc_name, msg_type, data=None):
+    def create_service_message(self, acc_name, msg_type, data=False):
         # Формирование простых сообщений USER_LIST, ONLINE, GET_CONTACTS, EXIT
         if msg_type in (USER_LIST, ONLINE, GET_CONTACTS, EXIT):
             LOGGER.debug(f'Сформировано "{msg_type}" сообщение для сервера')
@@ -267,7 +316,9 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
         print('   /+ <имя> - добавить в список контактов')
         print('   /- <имя> - удалить из контактов')
         print('   /! - запросить список собеседников')
-        print('   /c или /с - запросить список контактов')
+        print('   /a или /all - запросить список всех пользователей')
+        print('   /c или /cont - запросить список контактов')
+        print('   /m или /msg - запросить историю сообщений')
         print('   /h или /? - вывести подсказки по командам')
         print('   /q или /й - выход из программы')
 
@@ -291,8 +342,26 @@ def create_presence_message(sock, acc_name):
     LOGGER.error(f'Ответ сервера: {ans}')
 
 
-def load_database(sock, database, user_name):
-    pass
+def load_database(user_name, database, sock):
+    sender = ClientSender(user_name, database, sock)
+    try:
+        users_list = sender.create_service_message(user_name, USER_LIST, True)
+    except Exception as err:
+        LOGGER.error(f'Ошибка запроса списка пользователей: {err}')
+    else:
+        print(f'{users_list=}')
+        if users_list:
+            database.update_users(users_list)
+    try:
+        contacts_list = sender.create_service_message(user_name, GET_CONTACTS, True)
+    except Exception as err:
+        LOGGER.error(f'Ошибка запроса списка контактов: {err}')
+    else:
+        print(f'{contacts_list=}')
+        if contacts_list:
+            for contact in contacts_list:
+                database.add_contact(contact)
+    LOGGER.debug(f'База успешно загружена с сервера')
 
 
 def main():
@@ -346,14 +415,14 @@ def main():
 
             # Инициализация БД
             database = ClientDB(f'database/client_{acc_name}.db3')
-            load_database(my_sock, acc_name, database)
+            load_database(acc_name, database, my_sock)
 
-            thread_receiver = ClientReader(acc_name, my_sock, database)
+            thread_receiver = ClientReader(acc_name, database, my_sock)
             thread_receiver.daemon = True
             thread_receiver.start()
             LOGGER.debug('Запущен процесс получатель')
 
-            thread_sender_ui = ClientSender(acc_name, my_sock, database)
+            thread_sender_ui = ClientSender(acc_name, database, my_sock)
             thread_sender_ui.daemon = True
             thread_sender_ui.start()
             LOGGER.debug('Запущен процесс интерфейс и отправщик')
