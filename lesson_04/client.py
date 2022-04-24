@@ -63,7 +63,7 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
 
     def run(self):
         while True:
-            sleep(0.7)
+            sleep(1)
             with sock_lock:
                 try:
                     msg = get_message(self.sock)
@@ -84,13 +84,14 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
                         # sys.exit(0)
                     elif ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
                             SENDER in msg and MESSAGE_TEXT in msg:
-                        with database_lock:
-                            try:
-                                self.database.add_message(msg[SENDER],
-                                                          msg[DESTINATION],
-                                                          msg[MESSAGE_TEXT])
-                            except Exception as err:
-                                LOGGER.error(f'Ошибка взаимодействия с базой данных: {err}')
+                        if msg[SENDER] != self.acc_name:
+                            with database_lock:
+                                try:
+                                    self.database.add_message(msg[SENDER],
+                                                              msg[DESTINATION],
+                                                              msg[MESSAGE_TEXT])
+                                except Exception as err:
+                                    LOGGER.error(f'Ошибка взаимодействия с базой данных: {err}')
                         if DESTINATION in msg and msg[DESTINATION] == self.acc_name:
                             print(f'ЛИЧНО [{msg[SENDER]}]: {msg[MESSAGE_TEXT]}')
                         else:
@@ -111,10 +112,10 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
         self.print_help()
         while True:
             msg = input(f'')
-            if len(msg) >= 2:
+            if len(msg) >= 1:
 
                 # Сообщение является командой
-                if msg[0] == '/':
+                if len(msg) >= 2 and msg[0] == '/':
                     if msg[1] in ('q', 'й'):
                         self.create_service_message(self.acc_name, EXIT)
                         status_exit = True
@@ -161,7 +162,7 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                             print('Для добавления пользователя введите "/- <имя>"')
 
                     # Запрашиваем список пользователей
-                    elif msg[1] in ('a', 'all'):
+                    elif msg[1:] in ('a', 'all'):
                         # contact_list = self.create_service_message(self.acc_name, USER_LIST)
                         with database_lock:
                             try:
@@ -173,7 +174,7 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                                     print(f'[{user[0]}]')
 
                     # Запрашиваем список контактов
-                    elif msg[1] in ('c', 'cont'):
+                    elif msg[1:] in ('c', 'cont'):
                         # contact_list = self.create_service_message(self.acc_name, GET_CONTACTS)
                         with database_lock:
                             try:
@@ -184,7 +185,7 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                                 print(f'Ваш список контактов: {contact_list}')
 
                     # Запрашиваем список сообщений
-                    elif msg[1] in ('m', 'msg'):
+                    elif msg[1:] in ('m', 'msg'):
                         # contact_list = self.create_service_message(self.acc_name, USER_LIST)
                         name = input('Введите "от <имя>" или "к <имя>" пользователя или нажмите Enter: ')
                         with database_lock:
@@ -212,7 +213,7 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                         self.print_help()
 
                 # Пишем личное сообщение
-                elif msg[0] == '!':
+                elif len(msg) > 2 and msg[0] == '!':
                     dest_name, text = self.get_name_from_msg(msg, 1, get_text=True)
                     if dest_name:
                         self.create_text_message(self.sock, dest_name, text)
@@ -226,10 +227,10 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
 
     def get_name_from_msg(self, msg: str, cmd_len: int, get_text=False):
         if len(msg) < cmd_len + 1:
-            return None
+            return None, None if get_text else None
         name_len = msg[cmd_len:].lstrip().find(' ') if get_text else len(msg[cmd_len:].strip())
         if name_len <= 0:
-            return None
+            return None, None if get_text else None
         # print(f'name={msg[cmd_len + 1:cmd_len + 1 + name_len]=}')
         # print(f'text={msg[cmd_len + 1 + name_len:]=}')
         if get_text:
@@ -245,9 +246,9 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
             DESTINATION: dest_name,
             MESSAGE_TEXT: msg
         }
-        # LOGGER.debug(f'Добавляю сообщение в базу {msg}')
-        # with database_lock:
-        #     self.database.add_message(self.acc_name, dest_name, msg)
+        LOGGER.debug(f'Добавляю сообщение в базу {msg}')
+        with database_lock:
+            self.database.add_message(self.acc_name, dest_name, msg)
 
         LOGGER.debug(f'Отправляю сообщение {msg}')
         with sock_lock:
@@ -273,18 +274,25 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
             }
 
             with sock_lock:
-                send_message(self.sock, msg)
-                ans = get_message(self.sock)
-                if ans and RESPONSE in ans:
-                    LOGGER.debug(f'Получен ответ "{ans[RESPONSE]}" сообщение от сервера')
-                    # Ответ OK
-                    if ans[RESPONSE] == 200:
-                        pass
-                    # Ответ OK со списком
-                    elif ans[RESPONSE] == 202:
-                        return ans[ALERT]
-                    else:
-                        LOGGER.error(f'Не удалось {msg_type}, ответ сервера: {ans}')
+                try:
+                    send_message(self.sock, msg)
+                    ans = get_message(self.sock)
+                except OSError as err:
+                    if err.errno:
+                        print(f'Не удалось доставить сообщение: {err}')
+                        LOGGER.error(f'Не удалось доставить сообщение: {err}')
+                        return
+                else:
+                    if ans and RESPONSE in ans:
+                        LOGGER.debug(f'Получен ответ "{ans[RESPONSE]}" сообщение от сервера')
+                        # Ответ OK
+                        if ans[RESPONSE] == 200:
+                            pass
+                        # Ответ OK со списком
+                        elif ans[RESPONSE] == 202:
+                            return ans[ALERT]
+                        else:
+                            LOGGER.error(f'Не удалось {msg_type}, ответ сервера: {ans}')
 
         # Формирование сообщений для добавления/удаления контакта DD_CONTACT, DEL_CONTACT
         if data and msg_type in (ADD_CONTACT, DEL_CONTACT):
@@ -296,16 +304,23 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                 ACCOUNT_NAME: data
             }
             with sock_lock:
-                send_message(self.sock, msg)
-                ans = get_message(self.sock)
-                if ans and RESPONSE in ans:
-                    if ans[RESPONSE] == 200:
-                        LOGGER.debug(f'Получен ответ сервера: "OK"')
-                        return True
-                    else:
-                        LOGGER.debug(f'Не удалось {msg_type}, ответ сервера: {ans}')
-                        return False
-                LOGGER.debug(f'Получен неожиданный ответ сервера: "{ans}"')
+                try:
+                    send_message(self.sock, msg)
+                    ans = get_message(self.sock)
+                except OSError as err:
+                    if err.errno:
+                        print(f'Не удалось доставить сообщение: {err}')
+                        LOGGER.error(f'Не удалось доставить сообщение: {err}')
+                        return
+                else:
+                    if ans and RESPONSE in ans:
+                        if ans[RESPONSE] == 200:
+                            LOGGER.debug(f'Получен ответ сервера: "OK"')
+                            return True
+                        else:
+                            LOGGER.debug(f'Не удалось {msg_type}, ответ сервера: {ans}')
+                            return False
+                    LOGGER.debug(f'Получен неожиданный ответ сервера: "{ans}"')
 
     def print_help(self):
         print(' Поддерживаемые команды:')
