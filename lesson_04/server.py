@@ -183,14 +183,14 @@ class Server(threading.Thread, metaclass=ServerVerifier):
         dest_cli, send_cli = msg[DESTINATION], msg[SENDER]
         LOGGER.debug(f'{dest_cli=} {send_cli=}')
         if dest_cli == '':
+            LOGGER.debug(f'Отправляю сообщение [ВСЕМ]: {msg}')
             for every_cli in send_sock:
-                LOGGER.debug(f'Отправляю сообщение ВСЕМ: {msg}')
                 send_message(every_cli, msg)
-            LOGGER.info(f'{send_cli}: {msg}')
+            LOGGER.info(f'[{send_cli}] => [ВСЕМ]: {msg[MESSAGE_TEXT]}')
         elif dest_cli in self.clients and self.clients[dest_cli] in send_sock:
             LOGGER.debug(f'Отправляю сообщение [{dest_cli}]: {msg}')
             send_message(self.clients[dest_cli], msg)
-            LOGGER.info(f'{send_cli} => {dest_cli}: {msg}')
+            LOGGER.info(f'[{send_cli}] => [{dest_cli}]: {msg[MESSAGE_TEXT]}')
         elif dest_cli in self.clients and self.clients[dest_cli] not in send_sock:
             LOGGER.error(f'Ошибка: [{dest_cli}] Пропал вслед за кораблем')
             raise ConnectionError
@@ -277,7 +277,7 @@ class Server(threading.Thread, metaclass=ServerVerifier):
                                     self.database.user_logout(user_name)
                                     self.cli_socks.remove(client_with_msg)
                         except Exception as err:
-                            LOGGER.info(f'{client_with_msg.getpeername()} '
+                            LOGGER.error(f'{client_with_msg.getpeername()} '
                                         f'отключился (ошибка обработки сообщения: {recvd_msg}): {err}')
                             if client_with_msg in self.cli_socks:
                                 user_name = list(self.clients.keys())[
