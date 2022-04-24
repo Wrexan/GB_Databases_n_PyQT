@@ -54,10 +54,10 @@ class ServerDB:
         sent = Column(Integer)
         received = Column(Integer)
 
-        def __init__(self, user_id, sent, received):
+        def __init__(self, user_id):
             self.user_id = user_id
-            self.sent = sent
-            self.received = received
+            self.sent = 0
+            self.received = 0
 
     # История входа пользователей
     class LoginHistory(Base):
@@ -96,7 +96,7 @@ class ServerDB:
             user = self.AllUsers(user_name)
             self.session.add(user)
             self.session.commit()
-            new_user_stat = self.UsersStats(user.id, 0, 0)
+            new_user_stat = self.UsersStats(user.id)
             self.session.add(new_user_stat)
 
         new_active_user = self.ActiveUsers(user.id, ip, port, datetime.now())
@@ -191,13 +191,13 @@ class ServerDB:
     # Функция фиксирует передачу сообщения и делает соответствующие отметки в БД
     def process_message(self, sender, recipient):
         # Получаем ID отправителя и получателя
-        sender = self.session.query(self.AllUsers).filter_by(name=sender).first().id
-        recipient = self.session.query(self.AllUsers).filter_by(name=recipient).first().id
+        sender = self.session.query(self.AllUsers).filter_by(user_name=sender).first().id
+        recipient = self.session.query(self.AllUsers).filter_by(user_name=recipient).first().id
         # Запрашиваем строки из истории и увеличиваем счётчики
-        sender_row = self.session.query(self.UsersStats).filter_by(user=sender).first()
+        sender_row = self.session.query(self.UsersStats).filter_by(user_name=sender).first()
         sender_row.sent += 1
-        recipient_row = self.session.query(self.UsersStats).filter_by(user=recipient).first()
-        recipient_row.accepted += 1
+        recipient_row = self.session.query(self.UsersStats).filter_by(user_name=recipient).first()
+        recipient_row.received += 1
         self.session.commit()
 
 

@@ -63,7 +63,7 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
 
     def run(self):
         while True:
-            sleep(1)
+            sleep(0.7)
             with sock_lock:
                 try:
                     msg = get_message(self.sock)
@@ -74,7 +74,7 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
                     if err.errno:
                         LOGGER.error(f'Потеряно соединение с сервером (таймаут): {err}')
                         break
-                except (OSError, ConnectionError, ConnectionAbortedError,
+                except (ConnectionError, ConnectionAbortedError,
                         ConnectionResetError, json.JSONDecodeError) as err:
                     LOGGER.error(f'Потеряно соединение с сервером: {err}')
                     break
@@ -83,7 +83,7 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
                         LOGGER.debug(f'Соединение с сервером разорвано.')
                         # sys.exit(0)
                     elif ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
-                            SENDER in msg and SENDER != self.acc_name and MESSAGE_TEXT in msg:
+                            SENDER in msg and MESSAGE_TEXT in msg:
                         with database_lock:
                             try:
                                 self.database.add_message(msg[SENDER],
@@ -169,7 +169,8 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                             except Exception as err:
                                 LOGGER.error(f'Список пользователей загрузить не удалось: {err}')
                             else:
-                                print(f'Все пользователи: {user_list}')
+                                for user in sorted(user_list):
+                                    print(f'[{user[0]}]')
 
                     # Запрашиваем список контактов
                     elif msg[1] in ('c', 'cont'):
@@ -193,15 +194,13 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                                     name_from = name[2:].strip()
                                 elif name[0] == 'к':
                                     name_to = name[1:].strip()
-                                    print(f'{name_from=} {name_to=}')
-                                try:
-                                    user_list = self.database.get_messages(from_name=name_from, to_name=name_to)
-                                except Exception as err:
-                                    LOGGER.error(f'Список пользователей загрузить не удалось: {err}')
-                                else:
-                                    print(f'Все сообщения: {user_list}')
+                            try:
+                                msg_list = self.database.get_messages(from_name=name_from, to_name=name_to)
+                            except Exception as err:
+                                LOGGER.error(f'Список пользователей загрузить не удалось: {err}')
                             else:
-                                print(f'Все сообщения: {user_list}')
+                                for m in sorted(msg_list):
+                                    print(f'({m[3]}) [{m[0]}] => [{m[1]}]: {m[2]}')
 
                     # Запрашиваем список онлайн пользователей
                     elif msg[1] == '!':
@@ -246,9 +245,9 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
             DESTINATION: dest_name,
             MESSAGE_TEXT: msg
         }
-        LOGGER.debug(f'Добавляю сообщение в базу {msg}')
-        with database_lock:
-            self.database.add_message(self.acc_name, dest_name, msg)
+        # LOGGER.debug(f'Добавляю сообщение в базу {msg}')
+        # with database_lock:
+        #     self.database.add_message(self.acc_name, dest_name, msg)
 
         LOGGER.debug(f'Отправляю сообщение {msg}')
         with sock_lock:
@@ -272,7 +271,6 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
                 TIME: time(),
                 USER: acc_name
             }
-            # with sock_lock:
 
             with sock_lock:
                 send_message(self.sock, msg)
@@ -345,19 +343,17 @@ def create_presence_message(sock, acc_name):
 def load_database(user_name, database, sock):
     sender = ClientSender(user_name, database, sock)
     try:
-        users_list = sender.create_service_message(user_name, USER_LIST, True)
+        users_list = sender.create_service_message(user_name, USER_LIST)
     except Exception as err:
         LOGGER.error(f'Ошибка запроса списка пользователей: {err}')
     else:
-        print(f'{users_list=}')
         if users_list:
             database.update_users(users_list)
     try:
-        contacts_list = sender.create_service_message(user_name, GET_CONTACTS, True)
+        contacts_list = sender.create_service_message(user_name, GET_CONTACTS)
     except Exception as err:
         LOGGER.error(f'Ошибка запроса списка контактов: {err}')
     else:
-        print(f'{contacts_list=}')
         if contacts_list:
             for contact in contacts_list:
                 database.add_contact(contact)
@@ -428,7 +424,7 @@ def main():
             LOGGER.debug('Запущен процесс интерфейс и отправщик')
 
             while thread_receiver.is_alive() and thread_sender_ui.is_alive():
-                sleep(0.7)
+                sleep(1)
 
     except KeyboardInterrupt:
         LOGGER.info(f'Завершение работы клиента')

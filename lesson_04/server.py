@@ -94,28 +94,29 @@ class Server(threading.Thread, metaclass=ServerVerifier):
                         LOGGER.info(f'>>>>>> Подключился: {cli_ip} [{cli_name}]')
                         send_message(cli_sock, {RESPONSE: 200})
                     return
-        # Запрос списка всех пользователей
+                # Запрос списка всех пользователей
                 elif msg[ACTION] == USER_LIST:
                     LOGGER.info(f'Получен запрос списка пользователей от: {cli_ip} [{cli_name}]')
                     send_message(cli_sock, {
                         RESPONSE: 202,
-                        ALERT: self.database.get_contacts(cli_name)})
+                        ALERT: [user[0] for user in self.database.get_all_users_list()]})
                     return
-        # Запрос списка активных пользователей
+                # Запрос списка активных пользователей
                 elif msg[ACTION] == ONLINE:
                     LOGGER.info(f'Получен запрос списка активных пользователей от: {cli_ip} [{cli_name}]')
                     send_message(cli_sock, {
                         RESPONSE: 202,
-                        ALERT: list(self.clients.keys())})
+                        ALERT: [user[0] for user in self.database.get_active_users_list()]})
+                    # ALERT: list(self.clients.keys())})
                     return
-        # Запрос списка контактов
+                # Запрос списка контактов
                 elif msg[ACTION] == GET_CONTACTS:
                     LOGGER.info(f'Получен запрос списка контактов от: {cli_ip} [{cli_name}]')
                     send_message(cli_sock, {
                         RESPONSE: 202,
                         ALERT: self.database.get_contacts(cli_name)})
                     return
-        # Запрос на добавление/удаление контакта
+                # Запрос на добавление/удаление контакта
                 elif ACCOUNT_NAME in msg:
                     contact_name = msg[ACCOUNT_NAME]
                     if msg[ACTION] == DEL_CONTACT:
@@ -132,7 +133,7 @@ class Server(threading.Thread, metaclass=ServerVerifier):
                         else:
                             send_message(cli_sock, {RESPONSE: 409})
                         return
-        # Отключение
+                # Отключение
                 elif msg[ACTION] == EXIT:
                     self.del_sock(cli_sock, self.cli_socks)
                     self.database.user_logout(cli_name)
@@ -140,7 +141,7 @@ class Server(threading.Thread, metaclass=ServerVerifier):
                     del self.clients[cli_name]
                     # print(f'{self.clients=}')
                     return
-        # Сообщение
+            # Сообщение
             elif msg[ACTION] == MESSAGE and TIME in msg and \
                     SENDER in msg and DESTINATION in msg and MESSAGE_TEXT in msg:
                 if msg[MESSAGE_TEXT]:
@@ -165,9 +166,9 @@ class Server(threading.Thread, metaclass=ServerVerifier):
                 send_message(every_cli, msg)
             LOGGER.info(f'{send_cli}: {msg}')
         elif dest_cli in self.clients and self.clients[dest_cli] in send_sock:
-                LOGGER.debug(f'Отправляю сообщение [{dest_cli}]: {msg}')
-                send_message(self.clients[dest_cli], msg)
-                LOGGER.info(f'{send_cli} => {dest_cli}: {msg}')
+            LOGGER.debug(f'Отправляю сообщение [{dest_cli}]: {msg}')
+            send_message(self.clients[dest_cli], msg)
+            LOGGER.info(f'{send_cli} => {dest_cli}: {msg}')
         elif dest_cli in self.clients and self.clients[dest_cli] not in send_sock:
             LOGGER.error(f'Ошибка: [{dest_cli}] Пропал вслед за кораблем')
             raise ConnectionError
