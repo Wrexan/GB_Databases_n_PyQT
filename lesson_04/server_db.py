@@ -153,7 +153,7 @@ class ServerDB:
         self.session.commit()
         return True
 
-        # Получить список контактов пользователя
+    # Получить список контактов пользователя
     def get_contacts(self, user_name):
         user = self.session.query(self.AllUsers).filter_by(user_name=user_name).first()
         if not user:
@@ -194,9 +194,11 @@ class ServerDB:
         sender = self.session.query(self.AllUsers).filter_by(user_name=sender).first().id
         recipient = self.session.query(self.AllUsers).filter_by(user_name=recipient).first().id
         # Запрашиваем строки из истории и увеличиваем счётчики
-        sender_row = self.session.query(self.UsersStats).filter_by(user_name=sender).first()
+        sender_row = self.session.query(self.UsersStats).filter_by(user_id=sender).first()
+        print(f'a){sender_row.sent=}')
         sender_row.sent += 1
-        recipient_row = self.session.query(self.UsersStats).filter_by(user_name=recipient).first()
+        print(f'b){sender_row.sent=}')
+        recipient_row = self.session.query(self.UsersStats).filter_by(user_id=recipient).first()
         recipient_row.received += 1
         self.session.commit()
 

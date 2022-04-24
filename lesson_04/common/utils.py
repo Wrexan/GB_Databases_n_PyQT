@@ -54,7 +54,8 @@ def is_ip_bad(ip: str):
     if ip == '': return False
     if not isinstance(ip, str):
         LOGGER.error(f'ОШИБКА! Полученный IP: {ip} не является STR')
-        ValueError()
+        return True
+        # ValueError()
     ip_list = ip.split('.')
     return len(ip_list) != 4 or any(not n.isdecimal() or int(n) not in range(0, 255) for n in ip_list)
 
@@ -64,9 +65,14 @@ def is_port_bad(port):
     if isinstance(port, int):
         return not 1024 < port < 65535
     if isinstance(port, str):
-        return not 1024 < int(port) < 65535
+        try:
+            return not 1024 < int(port) < 65535
+        except ValueError:
+            LOGGER.error(f'Полученный PORT: {port} должен быть числом')
+            return True
     LOGGER.error(f'Полученный PORT: {port} за пределами 1024-65535')
-    ValueError()
+    return True
+    # ValueError()
 
 
 @log
@@ -91,7 +97,7 @@ def check_default_param(options, param):
 
 
 @log
-def handle_parameters(ip: str, port: int):
+def handle_parameters(ip: str, port: str):
     argv = sys.argv
     options = {
         '-a': [None, is_ip_bad, ip, 'IP'],
@@ -116,4 +122,4 @@ def handle_parameters(ip: str, port: int):
 
     LOGGER.debug(
         f'Использую: {" ".join(options.get(key)[3] + "=" + str(options.get(key)[k] if options.get(key)[k] else "ANY") for key in options)}')
-    return options.get('-a')[k], options.get('-p')[k], options.get('-n')[k]
+    return options.get('-a')[k], int(options.get('-p')[k]), options.get('-n')[k]

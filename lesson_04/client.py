@@ -84,13 +84,14 @@ class ClientReader(threading.Thread, metaclass=ClientVerifier):
                         # sys.exit(0)
                     elif ACTION in msg and msg[ACTION] == MESSAGE and TIME in msg and \
                             SENDER in msg and MESSAGE_TEXT in msg:
-                        with database_lock:
-                            try:
-                                self.database.add_message(msg[SENDER],
-                                                          msg[DESTINATION],
-                                                          msg[MESSAGE_TEXT])
-                            except Exception as err:
-                                LOGGER.error(f'Ошибка взаимодействия с базой данных: {err}')
+                        if msg[SENDER] != self.acc_name:
+                            with database_lock:
+                                try:
+                                    self.database.add_message(msg[SENDER],
+                                                              msg[DESTINATION],
+                                                              msg[MESSAGE_TEXT])
+                                except Exception as err:
+                                    LOGGER.error(f'Ошибка взаимодействия с базой данных: {err}')
                         if DESTINATION in msg and msg[DESTINATION] == self.acc_name:
                             print(f'ЛИЧНО [{msg[SENDER]}]: {msg[MESSAGE_TEXT]}')
                         else:
@@ -245,9 +246,9 @@ class ClientSender(threading.Thread, metaclass=ClientVerifier):
             DESTINATION: dest_name,
             MESSAGE_TEXT: msg
         }
-        # LOGGER.debug(f'Добавляю сообщение в базу {msg}')
-        # with database_lock:
-        #     self.database.add_message(self.acc_name, dest_name, msg)
+        LOGGER.debug(f'Добавляю сообщение в базу {msg}')
+        with database_lock:
+            self.database.add_message(self.acc_name, dest_name, msg)
 
         LOGGER.debug(f'Отправляю сообщение {msg}')
         with sock_lock:
