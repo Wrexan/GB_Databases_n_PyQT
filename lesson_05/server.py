@@ -5,7 +5,6 @@
 import os
 import sys
 import dis
-import random
 import select
 import threading
 import configparser
@@ -16,12 +15,11 @@ from common.globals import *
 from common.utils import get_message, send_message, handle_parameters, is_port_bad, is_ip_bad
 from time import time, localtime, strftime
 from log.decorator import log
-from server_db import ServerDB
+from server.server_db import ServerDB
 
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from server_gui import MainWindow, AllUsersWindow, create_all_users_model,\
+from server.server_gui import MainWindow, AllUsersWindow, create_all_users_model,\
     gui_create_model, HistoryWindow, create_stat_model, ConfigWindow
 
 # Инициализация логирования сервера.
@@ -118,14 +116,14 @@ class Server(threading.Thread, metaclass=ServerVerifier):
                     LOGGER.info(f'Получен запрос списка пользователей от: {cli_ip} [{cli_name}]')
                     send_message(cli_sock, {
                         RESPONSE: 202,
-                        ALERT: [user[0] for user in self.database.get_all_users_list()]})
+                        ALERT: [user[0] for user in self.database.get_all_users_list() if user[0] != cli_name]})
                     return
                 # Запрос списка активных пользователей
                 elif msg[ACTION] == ONLINE:
                     LOGGER.info(f'Получен запрос списка активных пользователей от: {cli_ip} [{cli_name}]')
                     send_message(cli_sock, {
                         RESPONSE: 202,
-                        ALERT: [user[0] for user in self.database.get_active_users_list()]})
+                        ALERT: [user[0] for user in self.database.get_active_users_list() if user[0] != cli_name]})
                     # ALERT: list(self.clients.keys())})
                     return
                 # Запрос списка контактов
@@ -314,7 +312,7 @@ def main():
     # Загрузка файла конфигурации сервера
     config = configparser.ConfigParser()
 
-    dir_path = os.path.dirname(os.path.realpath(__file__)) + '/common'
+    dir_path = os.path.dirname(os.path.realpath(__file__)) + '/server'
     config.read(f"{dir_path}/{'server.ini'}")
 
     # Загрузка параметров командной строки, если нет параметров, то задаём
@@ -327,7 +325,7 @@ def main():
         os.path.join(
             config['SETTINGS']['database_path'],
             config['SETTINGS']['database_file']))
-    # database = ServerDB('database/server_base.db3')
+    # client = ServerDB('client/server_base.db3')
 
     # Создание экземпляра класса - сервера и его запуск:
     server = Server(database, listen_ip, listen_port)
@@ -427,18 +425,18 @@ def main():
     # while True:
     #     command = input('=>')
     #     if command.lower() in ['u', 'users']:
-    #         for user in sorted(database.get_all_users_list()):
+    #         for user in sorted(client.get_all_users_list()):
     #             print(f'Пользователь [{user[0]}], последний вход: {user[1]}')
     #     elif command.lower() in ['a', 'active']:
-    #         for user in sorted(database.get_active_users_list()):
+    #         for user in sorted(client.get_active_users_list()):
     #             print(f'Пользователь [{user[0]}] [{user[1]}:{user[2]}] вошел: {user[3]}')
     #     elif command.lower() in ['l', 'loghist']:
     #         name = input('Введите имя конкретного пользователя или нажмите Enter: ')
-    #         for user in sorted(database.get_login_history(name)):
+    #         for user in sorted(client.get_login_history(name)):
     #             print(f'Пользователь [{user[0]}], последний вход: {user[3]} с [{user[1]}:{user[2]}]')
     #     elif command.lower() in ['s', 'stat']:
     #         name = input('Введите имя конкретного пользователя или нажмите Enter: ')
-    #         for data in sorted(database.get_user_stat(name)):
+    #         for data in sorted(client.get_user_stat(name)):
     #             print(f'Пользователь [{data[0]}], последний вход: {data[1]} '
     #                   f'сообщений отправлено: {data[2]} получено: {data[3]}]')
     #     elif command.lower() in ['?', 'help']:

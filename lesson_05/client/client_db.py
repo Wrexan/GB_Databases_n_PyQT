@@ -41,7 +41,7 @@ class ClientDB:
             self.date = datetime.now()
 
     # Инициализация
-    def __init__(self, path):  # database/server_base.db3
+    def __init__(self, path):  # client/server_base.db3
         self.engine = create_engine(f'sqlite:///{path}?check_same_thread=False',
                                     echo=False, pool_recycle=7200, encoding='utf-8')
         self.Base.metadata.create_all(self.engine)
@@ -70,6 +70,13 @@ class ClientDB:
             self.session.add(self.AllUsers(user))
         self.session.commit()
 
+    # Пересоздание списка пользователей
+    def update_contacts(self, contacts_list):
+        self.session.query(self.UsersContacts).delete()
+        for user in contacts_list:
+            self.session.add(self.UsersContacts(user))
+        self.session.commit()
+
     # Добавление сообщения
     def add_message(self, from_name, to_name, msg):
         self.session.add(self.MessageHistory(from_name, to_name, msg))
@@ -77,22 +84,25 @@ class ClientDB:
 
     # Чтение пользователей
     def get_users(self):
-        query = self.session.query(self.AllUsers.user_name)
-        return query.all()
+        return [user[0] for user in self.session.query(self.AllUsers.user_name).all()]
 
     # Чтение контактов
     def get_contacts(self):
-        query = self.session.query(self.UsersContacts.contact_name)
-        return query.all()
+        return [contact[0] for contact in self.session.query(self.UsersContacts.contact_name).all()]
 
     # Чтение сообщений
-    def get_messages(self, from_name=None, to_name=None):
-        query = self.session.query(self.MessageHistory)
-        if from_name:
-            query = query.filter_by(from_name=from_name)
-        if to_name:
-            query = query.filter_by(to_name=to_name)
+    def get_history(self, contact):
+        query = self.session.query(self.MessageHistory).filter_by(contact=contact)
         return [(m.from_name, m.to_name, m.msg, str(m.date)) for m in query.all()]
+
+    # Чтение сообщений
+    # def get_messages(self, from_name=None, to_name=None):
+    #     query = self.session.query(self.MessageHistory)
+    #     if from_name:
+    #         query = query.filter_by(from_name=from_name)
+    #     if to_name:
+    #         query = query.filter_by(to_name=to_name)
+    #     return [(m.from_name, m.to_name, m.msg, str(m.date)) for m in query.all()]
 
     # Функция проверяет наличие пользователя в таблице Известных Пользователей
     def check_user(self, name):

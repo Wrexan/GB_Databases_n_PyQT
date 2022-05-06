@@ -75,7 +75,7 @@ class ServerDB:
             self.last_login_time = last_login_time
 
     # Инициализация
-    def __init__(self, path):  # database/server_base.db3
+    def __init__(self, path):  # client/server_base.db3
         self.engine = create_engine(f'sqlite:///{path}?check_same_thread=False',
                                     echo=False, pool_recycle=7200, encoding='utf-8')
         self.Base.metadata.create_all(self.engine)
@@ -210,7 +210,7 @@ class ServerDB:
 
 # Тест работы
 if __name__ == '__main__':
-    db = ServerDB('database/server_base.db3')
+    db = ServerDB('client/server_base.db3')
     db.user_login('Василий', '192.168.1.4', 8888)
     db.user_login('Анатолий', '192.168.1.5', 7778)
     print(f'{db.get_all_users_list()=}')

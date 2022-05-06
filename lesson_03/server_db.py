@@ -63,7 +63,7 @@ class ServerDB:
             self.last_login_time = last_login_time
 
     def __init__(self):
-        self.engine = create_engine('sqlite:///database/server_base.db3?check_same_thread=False',
+        self.engine = create_engine('sqlite:///server/server_base.db3?check_same_thread=False',
                                     echo=False, pool_recycle=7200, encoding='utf-8')
         self.Base.metadata.create_all(self.engine)
         Session = scoped_session(sessionmaker(bind=self.engine))

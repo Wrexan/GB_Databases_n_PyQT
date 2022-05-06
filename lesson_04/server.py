@@ -327,7 +327,7 @@ def main():
         os.path.join(
             config['SETTINGS']['database_path'],
             config['SETTINGS']['database_file']))
-    # database = ServerDB('database/server_base.db3')
+    # client = ServerDB('client/server_base.db3')
 
     # Создание экземпляра класса - сервера и его запуск:
     server = Server(database, listen_ip, listen_port)
@@ -427,18 +427,18 @@ def main():
     # while True:
     #     command = input('=>')
     #     if command.lower() in ['u', 'users']:
-    #         for user in sorted(database.get_all_users_list()):
+    #         for user in sorted(client.get_all_users_list()):
     #             print(f'Пользователь [{user[0]}], последний вход: {user[1]}')
     #     elif command.lower() in ['a', 'active']:
-    #         for user in sorted(database.get_active_users_list()):
+    #         for user in sorted(client.get_active_users_list()):
     #             print(f'Пользователь [{user[0]}] [{user[1]}:{user[2]}] вошел: {user[3]}')
     #     elif command.lower() in ['l', 'loghist']:
     #         name = input('Введите имя конкретного пользователя или нажмите Enter: ')
-    #         for user in sorted(database.get_login_history(name)):
+    #         for user in sorted(client.get_login_history(name)):
     #             print(f'Пользователь [{user[0]}], последний вход: {user[3]} с [{user[1]}:{user[2]}]')
     #     elif command.lower() in ['s', 'stat']:
     #         name = input('Введите имя конкретного пользователя или нажмите Enter: ')
-    #         for data in sorted(database.get_user_stat(name)):
+    #         for data in sorted(client.get_user_stat(name)):
     #             print(f'Пользователь [{data[0]}], последний вход: {data[1]} '
     #                   f'сообщений отправлено: {data[2]} получено: {data[3]}]')
     #     elif command.lower() in ['?', 'help']:

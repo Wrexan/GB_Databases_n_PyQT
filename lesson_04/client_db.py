@@ -41,7 +41,7 @@ class ClientDB:
             self.date = datetime.now()
 
     # Инициализация
-    def __init__(self, path):  # database/server_base.db3
+    def __init__(self, path):  # client/server_base.db3
         self.engine = create_engine(f'sqlite:///{path}?check_same_thread=False',
                                     echo=False, pool_recycle=7200, encoding='utf-8')
         self.Base.metadata.create_all(self.engine)

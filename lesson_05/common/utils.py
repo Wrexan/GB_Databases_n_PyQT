@@ -11,7 +11,7 @@ from log.decorator import log
 LOGGER = logging.getLogger('server') if 'server.py' in sys.argv[0] else logging.getLogger('client')
 
 
-@log
+# @log
 def get_message(sender_sock):
     try:
         encoded_data = sender_sock.recv(MAX_PACKAGE_LENGTH)
