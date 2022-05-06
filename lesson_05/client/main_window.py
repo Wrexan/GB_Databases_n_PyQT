@@ -218,13 +218,13 @@ class ClientMainWindow(QMainWindow):
         for i in range(start_index, length):
             item = list_messages[i]
             if item[1] == 'i':
-                mess = QStandardItem(f'{self.current_chat} {item[3].replace(microsecond=0)}:\n {item[2]}')
+                mess = QStandardItem(f'{self.current_chat} ({item[3].replace(microsecond=0)}):\n {item[2]}')
                 mess.setEditable(False)
                 mess.setBackground(QBrush(QColor(224, 233, 255)))
                 mess.setTextAlignment(Qt.AlignLeft)
                 self.history_model.appendRow(mess)
             else:
-                mess = QStandardItem(f'{self.transport.acc_name} {item[3].replace(microsecond=0)}:\n {item[2]}')
+                mess = QStandardItem(f'{self.transport.acc_name} ({item[3].replace(microsecond=0)}):\n {item[2]}')
                 mess.setEditable(False)
                 mess.setTextAlignment(Qt.AlignRight)
                 mess.setBackground(QBrush(QColor(224, 255, 233)))
