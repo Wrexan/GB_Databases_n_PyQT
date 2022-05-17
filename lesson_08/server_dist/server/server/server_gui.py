@@ -1,11 +1,8 @@
-import os
-import sys
 import hashlib
 import binascii
 import logging
 import threading
-import log.server_log_config
-from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QApplication, QLabel, QTableView, QDialog, QPushButton, \
+from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QLabel, QTableView, QDialog, QPushButton, \
     QLineEdit, QFileDialog, QMessageBox, QMenu
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QEvent, QTimer

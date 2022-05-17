@@ -20,8 +20,7 @@ import threading
 from time import localtime, strftime
 from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 
-sys.path.append('../../../lesson_05/')
-import log.server_log_config
+sys.path.append('../')
 from common.globals import *
 from common.utils import get_message, send_message
 from log.decorator import log

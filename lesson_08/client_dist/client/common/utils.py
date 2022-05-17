@@ -3,9 +3,8 @@ import os
 import sys
 import logging
 
-sys.path.append(os.path.join(os.getcwd(), '..'))
-from common.globals import ENCODING, MAX_PACKAGE_LENGTH, DEF_IP, ERROR
-import log.client_log_config
+sys.path.append(os.path.join(os.getcwd(), '../'))
+from common.globals import ENCODING, MAX_PACKAGE_LENGTH
 from log.decorator import log
 
 LOGGER = logging.getLogger('server') if 'server.py' in sys.argv[0] else logging.getLogger('client')

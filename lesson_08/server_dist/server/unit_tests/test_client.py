@@ -2,8 +2,8 @@ import os
 import sys
 import unittest
 
-sys.path.append(os.path.join(os.getcwd(), '../../../lesson_05'))
-from client_dist.client import create_presence, handle_answer
+sys.path.append(os.path.join(os.getcwd(), '../'))
+from client.transport import create_presence, handle_answer
 from common.globals import ACTION, PRESENCE, RESPONSE, ERROR, TIME, USER, ACCOUNT_NAME
 
 

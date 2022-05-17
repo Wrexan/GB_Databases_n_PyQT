@@ -10,22 +10,22 @@
 # SERVER
 import os
 import sys
-import dis
-import select
+# import dis
+# import select
 import threading
 import configparser
 import log.server_log_config
 
-from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
+# from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 from common.globals import *
-from common.utils import get_message, send_message, handle_parameters, is_port_bad, is_ip_bad
-from time import time, localtime, strftime
+from common.utils import handle_parameters
+# from time import time, localtime, strftime
 from log.decorator import log
 from server.server_db import ServerDB
 from server.server_core import Core
 
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from PyQt5.QtCore import QTimer
+# from PyQt5.QtCore import QTimer
 from server.server_gui import MainWindow
 
 # Инициализация логирования сервера.

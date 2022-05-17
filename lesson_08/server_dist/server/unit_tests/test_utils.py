@@ -4,8 +4,8 @@ import json
 import unittest
 from unittest.mock import patch
 sys.path.append(os.path.join(os.getcwd(), '../../../lesson_05'))
-from common.utils import get_message, send_message, handle_parameters
-from common.globals import ACTION, PRESENCE, RESPONSE, ERROR, TIME, USER, ACCOUNT_NAME,\
+from client.common.utils import get_message, send_message, handle_parameters
+from client.common import ACTION, PRESENCE, RESPONSE, ERROR, TIME, USER, ACCOUNT_NAME,\
     DEF_IP, DEF_PORT, ENCODING
 
 

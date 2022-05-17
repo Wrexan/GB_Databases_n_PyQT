@@ -2,17 +2,16 @@
 
 import sys
 import os
-import logging
 import logging.handlers
 from common.globals import LOGGING_LEVEL
-sys.path.append('../../../lesson_05/')
+sys.path.append('../')
 
 # создаём формировщик логов (formatter):
 SERVER_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s %(filename)s [%(lineno)d] %(message)s')
 
 # Подготовка имени файла для логирования
 PATH = os.path.dirname(os.path.abspath(__file__))
-PATH = os.path.join(PATH, '../../../lesson_05/log/server.log')
+PATH = os.path.join(PATH, 'server.log')
 
 # создаём потоки вывода логов
 STREAM_HANDLER = logging.StreamHandler(sys.stderr)

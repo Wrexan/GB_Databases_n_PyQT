@@ -2,9 +2,9 @@ import os
 import sys
 import unittest
 
-sys.path.append(os.path.join(os.getcwd(), '../../../lesson_05'))
-from server import handle_client_message
-from common.globals import ACTION, PRESENCE, RESPONSE, ERROR, TIME, USER, ACCOUNT_NAME, DEF_PORT, DEF_IP_FOR_RESPONSE
+sys.path.append(os.path.join(os.getcwd(), '../'))
+from server.server_core import handle_client_message
+from client.common import ACTION, PRESENCE, RESPONSE, ERROR, TIME, USER, ACCOUNT_NAME
 
 
 class TestServer(unittest.TestCase):
