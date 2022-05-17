@@ -46,8 +46,17 @@ def main():
 
     # Загрузка параметров командной строки, если нет параметров, то задаём
     # значения по умоланию.
+    if 'SETTINGS' in config:
+        pass
+    else:
+        config.add_section('SETTINGS')
+        config.set('SETTINGS', 'listen_port', str(DEF_PORT))
+        config.set('SETTINGS', 'listen_ip', '')
+        config.set('SETTINGS', 'database_path', 'server/')
+        config.set('SETTINGS', 'database_file', 'server.db3')
+
     listen_ip, listen_port, _, _ = handle_parameters(
-        config['SETTINGS']['listen_address'], config['SETTINGS']['default_port'])
+        config['SETTINGS']['listen_ip'], config['SETTINGS']['listen_port'])
 
     # Инициализация базы данных
     database = ServerDB(

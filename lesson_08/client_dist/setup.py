@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name="pyqt_hyperchat_client",
-      version="0.1.8a",
+      version="0.1.81",
       description="pyqt_hyperchat_client",
       author="Wrexan",
       author_email="fwrexan@gmail.com",

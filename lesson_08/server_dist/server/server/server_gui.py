@@ -173,8 +173,8 @@ class MainWindow(QMainWindow):
         config_window = ConfigWindow()
         config_window.db_path.insert(self.config['SETTINGS']['database_path'])
         config_window.db_file.insert(self.config['SETTINGS']['database_file'])
-        config_window.port.insert(self.config['SETTINGS']['default_port'])
-        config_window.ip.insert(self.config['SETTINGS']['listen_address'])
+        config_window.port.insert(self.config['SETTINGS']['listen_port'])
+        config_window.ip.insert(self.config['SETTINGS']['listen_ip'])
         config_window.save_btn.clicked.connect(config_window.save_server_config)
         # config_window.show()
 
