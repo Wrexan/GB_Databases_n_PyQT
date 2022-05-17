@@ -1,11 +1,10 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
 
 sys.path.append(os.path.join(os.getcwd(), '..'))
-from client import create_presence, handle_answer, main
-from common.globals import ACTION, PRESENCE, RESPONSE, ERROR, TIME, USER, ACCOUNT_NAME, DEF_PORT, DEF_IP_FOR_RESPONSE
+from client_dist.client import create_presence, handle_answer
+from common.globals import ACTION, PRESENCE, RESPONSE, ERROR, TIME, USER, ACCOUNT_NAME
 
 
 class TestClient(unittest.TestCase):

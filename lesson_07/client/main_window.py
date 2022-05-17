@@ -1,16 +1,11 @@
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QApplication, QDialog, QMenu, QPushButton, QLabel
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QApplication, QMenu
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QBrush, QColor
-from PyQt5.QtCore import pyqtSlot, QEvent, Qt, QObject
+from PyQt5.QtCore import pyqtSlot, QEvent, Qt
 import sys
-import json
-import logging
 
 sys.path.append('../')
 from common.globals import *
-from client.main_window_ui import Ui_MainWindow
-from client.client_db import ClientDB
-from client.transport import ClientTransport
-from common.errors import ServerError
+from client_dist.client import Ui_MainWindow
 
 LOGGER = logging.getLogger('client')
 

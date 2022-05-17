@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, qApp, QDialog
 sys.path.append('../')
 
-from client.login_dialog_ui import Ui_UserLoginDialog
+from client_dist.client import Ui_UserLoginDialog
 
 
 class LoginWindow(QDialog):
